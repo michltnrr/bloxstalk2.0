@@ -1,3 +1,7 @@
+require('dotenv').config()
+const sgMail = require(`@sendgrid/mail`)
+sgMail.setApiKey(process.env.SENDGRID_KEY)
+
 async function getPresence() {
     try {
         const presensceReq = await fetch('https://presence.roblox.com/v1/presence/users', {
@@ -8,7 +12,7 @@ async function getPresence() {
             },
             body: JSON.stringify({
                 "userIds" : [
-                    14023206
+                    4594160366
                 ]
             })
         })
@@ -20,9 +24,30 @@ async function getPresence() {
     }
 }
 
+async function sendText() {
+    const presenceData = await getPresence()
+    if(presenceData.userPresences[0].userPresenceType === 2) {
+       const text = {
+        //this doesnt work anymore, so my code doesnt work
+        to: `${process.env.MY_NUMBER}@tmomail.net`,
+        from: `michaeldturner21@gmail.com`,
+        subject:"Bloxstalk status",
+        text: `Your friend is currently online and in game!`
+    }
+    await sgMail.send(text)
+}
+else if(presenceData.userPresences[0].userPresenceType === 1) {
+    const text = {
+        to: `${process.env.MY_NUMBER}@tmomail.net`,
+        from: `michaeldturner21@gmail.com`,
+        subject:"Bloxstalk status",
+        text: `Your friend just hopped online, but their currently not in game.`
+}
+        await sgMail.send(text)
+    }
+}
 
 async function main() {
-    const presenceData = await getPresence()
-    console.log(presenceData)
+    sendText()
 }
 main()

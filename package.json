@@ -1,0 +1,24 @@
+{
+  "name": "bstalk2",
+  "version": "1.0.0",
+  "description": "script to send text when ur roblox friend is online",
+  "homepage": "https://github.com/michltnrr/bloxstalk2.0#readme",
+  "bugs": {
+    "url": "https://github.com/michltnrr/bloxstalk2.0/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michltnrr/bloxstalk2.0.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "dotenv": "^17.2.3"
+  }
+}
