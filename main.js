@@ -1,6 +1,5 @@
 require('dotenv').config()
-const sgMail = require(`@sendgrid/mail`)
-sgMail.setApiKey(process.env.SENDGRID_KEY)
+const userId = process.env.USER_ID
 
 async function getPresence() {
     try {
@@ -12,7 +11,7 @@ async function getPresence() {
             },
             body: JSON.stringify({
                 "userIds" : [
-                    4594160366
+                    userId
                 ]
             })
         })
@@ -27,23 +26,43 @@ async function getPresence() {
 async function sendText() {
     const presenceData = await getPresence()
     if(presenceData.userPresences[0].userPresenceType === 2) {
-       const text = {
-        //this doesnt work anymore, so my code doesnt work
-        to: `${process.env.MY_NUMBER}@tmomail.net`,
-        from: `michaeldturner21@gmail.com`,
-        subject:"Bloxstalk status",
-        text: `Your friend is currently online and in game!`
+       const text = await fetch(`https://discord.com/api/v10/channels/${process.env.CHANNEL_ID}/messages`, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bot ${process.env.BOT_TOKEN}`
+        },
+        body: JSON.stringify({
+            content: `Your friend is currently online and in game! Click the link below to join`,
+            embeds: [
+                {
+                    title: `Join your friend!`,
+                    description: `Click here to join your friend in game`,
+                    url: `https://www.roblox.com/users/${userId}/profile`
+                }
+            ]
+        })
+        
+    }) 
+    if(!text.ok) {
+        console.log(`Something went wrong`)
     }
-    await sgMail.send(text)
 }
-else if(presenceData.userPresences[0].userPresenceType === 1) {
-    const text = {
-        to: `${process.env.MY_NUMBER}@tmomail.net`,
-        from: `michaeldturner21@gmail.com`,
-        subject:"Bloxstalk status",
-        text: `Your friend just hopped online, but their currently not in game.`
-}
-        await sgMail.send(text)
+
+    else if(presenceData.userPresences[0].userPresenceType === 1) {
+        const text = await fetch(`https://discord.com/api/v10/channels/${process.env.CHANNEL_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bot ${process.env.BOT_TOKEN}`
+            },
+            body: JSON.stringify({
+                content: `Your friend is currently online and in game!`,
+            })  
+        })
+        if(!text.ok) {
+            console.log(`Something went wrong`)
+        }
     }
 }
 
