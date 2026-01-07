@@ -1,6 +1,9 @@
 require('dotenv').config()
 const {Client, GatewayIntentBits} = require('discord.js')
 
+let userIds = []
+let userMap = new Map()
+
 const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 })
@@ -14,11 +17,13 @@ client.on('interactionCreate', async(interaction) => {
 
     if(interaction.commandName === 'stalk') {
         const userId = interaction.options.getString('userid')
-        await sendText(userId, interaction)
+        userIds.push(userId)
+        await interaction.reply("User is now being stalked, We'll let you know when they're online.")
+        await sendText(interaction, userIds)
     }
 })
 
-async function getPresence(userId) {
+async function getPresence(userIds) {
     try {
         const presensceReq = await fetch('https://presence.roblox.com/v1/presence/users', {
             method: 'POST',
@@ -27,43 +32,110 @@ async function getPresence(userId) {
                 "Cookie" : `.ROBLOXSECURITY=${process.env.ROBLOX_COOKIE}`
             },
             body: JSON.stringify({
-                userIds : [
-                    userId
-                ]
+                userIds : userIds
             })
         })
-    
-    const data = await presensceReq.json()
-    return data
+        
+        const data = await presensceReq.json()
+        return data
     } catch(err) {
-        console.log(`Error in getPresence: ${err.message}`)
+        console.log(`Error Getting Presence: ${err.message}`)
     }
 }
 
-async function sendText(userId, interaction) {
-    const presenceData = await getPresence(userId)
+async function getFriends(userIds) {
     try {
-        if(presenceData.userPresences[0].userPresenceType === 2) {
-        await interaction.reply({
-            content: `Your friend is currently online and in game! Click the link below to join`,
-            embeds: [
-                {
-                    title: `Join your friend!`,
-                    description: `Click here to join your friend in game`,
-                    url: `https://www.roblox.com/users/${userId}/profile`
-                }
-            ]
+        const friendNames = await fetch(`https://users.roblox.com/v1/users`, {
+            method: `POST`,
+            headers: {
+                "Content-Type": "application/json",
+                "Cookie" : `.ROBLOXSECURITY=${process.env.ROBLOX_COOKIE}`
+            }, 
+            body: 
+            JSON.stringify({
+                userIds: userIds
+            })
+        })
+        return await friendNames.json()
+    }catch(err) {
+        console.log(`Erorr getting friend names: ${err.message}`)
+    }
+} 
+
+
+async function sendText(interaction, userIds) {
+    const presenceData = await getPresence(userIds)
+    let friendsUsers = await getFriends(userIds)
+    console.log(friendsUsers)
+    let ingameFriends = []
+    let loggedIn = []
     
+    friendsUsers.data.forEach(usr => userMap.set(usr.id, usr.displayName))
+    
+    try {
+        presenceData.userPresences.forEach((el, i) => {
+            const name = userMap.get(el.userId) || `User ${el.userId}`
+            
+            if(el.userPresenceType === 2) ingameFriends.push(name)
+                else if(el.userPresenceType === 1) loggedIn.push(name)
+        })
+    
+    let text = ``
+    if(ingameFriends.length > 0) {
+        if(ingameFriends.length === 1) {
+            text += `Your friend ${ingameFriends[ingameFriends.length-1]} is currently online in game! Click the link below to join.`
+        }
+        else {
+            text += `Your friends ${ingameFriends.join(', ')} are currently online and in game! Click the link below to join.`
+        }
+
+    }
+    
+    if(loggedIn.length > 0) {
+        if(loggedIn.length === 1) {
+            text += `Your friend ${loggedIn[loggedIn.length-1]} is currently online, but they're not playing a game.`
+        }
+        else {
+            text += `Your friends ${loggedIn.join(', ')} are online but, they're not playing a game.`
+        }
+    }
+    
+    if(ingameFriends.length > 0) {
+        await interaction.followUp({
+            content: text,
+            embeds: [{
+                title: `Join your friend(s)!`,
+                description: 'Click the link below to join your friend(s)',
+                url: 'https://roblox.com/home'
+            }]
         })
     }
-   
-    else if(presenceData.userPresences[0].userPresenceType === 1) {
-        await interaction.reply(`Your friend is online, but they're currently not in a game`)
-    }
+    
     
 }catch(err) {
-        console.log(`Error Sending Text: ${err.message}`)
-    }
+    console.log(`Error Sending Text: ${err.message}`)
+}
 }
 
+client.on(`interactionCreate`, async(interaction) => {
+    if(!interaction.isChatInputCommand()) return
+    
+    if(interaction.commandName === 'unstalk') {
+        const userId = Number(interaction.options.getString('userid'))
+        userIds = userIds.filter(id=> id !== userId)
+        console.log(userMap)
+        userMap.delete(userId)
+        await interaction.reply(`User ${userMap.get(userId)}, is no longer being stalked`)
+    }
+
+    else if(interaction.commandName === 'peep') {
+        let stalkedUsers = [...userMap.values()]
+        if(stalkedUsers.length === 0) {
+            await interaction.reply("No users being stalked...for now")
+            return
+        }
+        const text = stalkedUsers.map(user => `•${user}`).join('\n')
+        await interaction.reply(`Users being stalked:\n${text}`)
+    }
+})
 client.login(process.env.BOT_TOKEN)

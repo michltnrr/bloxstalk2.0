@@ -11,7 +11,21 @@ const commands = [
         .setDescription('Roblox user ID to track')
         .setRequired(true)
     )
-    .toJSON()
+    .toJSON(),
+
+    new SlashCommandBuilder()
+    .setName('unstalk')
+    .setDescription('Stop tracking Roblox User')
+    .addStringOption(option => 
+      option
+        .setName('userid')
+        .setDescription('User ID of person to stop tracking')
+        .setRequired(true)
+    ).toJSON(),
+
+    new SlashCommandBuilder()
+    .setName('peep')
+    .setDescription('Get list of all currently tracked users')
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
