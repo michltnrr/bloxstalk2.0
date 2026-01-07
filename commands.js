@@ -26,6 +26,12 @@ const commands = [
     new SlashCommandBuilder()
     .setName('peep')
     .setDescription('Get list of all currently tracked users')
+    .toJSON(),
+
+    new SlashCommandBuilder()
+    .setName('abort')
+    .setDescription('Stop tracking all users')
+    .toJSON()
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);

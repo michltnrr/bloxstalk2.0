@@ -16,7 +16,7 @@ client.on('interactionCreate', async(interaction) => {
     if(!interaction.isChatInputCommand()) return
 
     if(interaction.commandName === 'stalk') {
-        const userId = interaction.options.getString('userid')
+        const userId = Number(interaction.options.getString('userid'))
         userIds.push(userId)
         await interaction.reply("User is now being stalked, We'll let you know when they're online.")
         await sendText(interaction, userIds)
@@ -65,52 +65,40 @@ async function getFriends(userIds) {
 
 async function sendText(interaction, userIds) {
     const presenceData = await getPresence(userIds)
+    console.log(JSON.stringify(presenceData, null, 2))
     let friendsUsers = await getFriends(userIds)
     console.log(friendsUsers)
     let ingameFriends = []
     let loggedIn = []
     
-    friendsUsers.data.forEach(usr => userMap.set(usr.id, usr.displayName))
+    friendsUsers.data.forEach(usr => userMap.set(Number(usr.id), usr.displayName))
     
     try {
         presenceData.userPresences.forEach((el, i) => {
             const name = userMap.get(el.userId) || `User ${el.userId}`
             
             if(el.userPresenceType === 2) ingameFriends.push(name)
-                else if(el.userPresenceType === 1) loggedIn.push(name)
+            else if(el.userPresenceType === 1) loggedIn.push(name)
         })
-    
+    console.log(ingameFriends)
+    console.log(loggedIn)
     let text = ``
+    
     if(ingameFriends.length > 0) {
-        if(ingameFriends.length === 1) {
-            text += `Your friend ${ingameFriends[ingameFriends.length-1]} is currently online in game! Click the link below to join.`
-        }
-        else {
-            text += `Your friends ${ingameFriends.join(', ')} are currently online and in game! Click the link below to join.`
-        }
-
-    }
+            text += `▀ Friend(s)  online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    }
     
     if(loggedIn.length > 0) {
-        if(loggedIn.length === 1) {
-            text += `Your friend ${loggedIn[loggedIn.length-1]} is currently online, but they're not playing a game.`
-        }
-        else {
-            text += `Your friends ${loggedIn.join(', ')} are online but, they're not playing a game.`
-        }
-    }
-    
-    if(ingameFriends.length > 0) {
-        await interaction.followUp({
-            content: text,
-            embeds: [{
-                title: `Join your friend(s)!`,
-                description: 'Click the link below to join your friend(s)',
-                url: 'https://roblox.com/home'
-            }]
-        })
-    }
-    
+        text += `Friends online, but not playing a game ${loggedIn.join('\n• ')}\n\n`
+}
+
+    await interaction.followUp({
+        content: text,
+        embeds: [{
+            title: `Join your friend(s)!`,
+            description: 'Click the link below to join your friend(s)',
+            url: 'https://roblox.com/home',
+        }]
+    })
     
 }catch(err) {
     console.log(`Error Sending Text: ${err.message}`)
@@ -124,8 +112,8 @@ client.on(`interactionCreate`, async(interaction) => {
         const userId = Number(interaction.options.getString('userid'))
         userIds = userIds.filter(id=> id !== userId)
         console.log(userMap)
-        userMap.delete(userId)
         await interaction.reply(`User ${userMap.get(userId)}, is no longer being stalked`)
+        userMap.delete(userId)
     }
 
     else if(interaction.commandName === 'peep') {
@@ -136,6 +124,12 @@ client.on(`interactionCreate`, async(interaction) => {
         }
         const text = stalkedUsers.map(user => `•${user}`).join('\n')
         await interaction.reply(`Users being stalked:\n${text}`)
+    }
+
+    else if(interaction.commandName === 'abort') {
+        userIds = []
+        userMap.clear()
+        await interaction.reply('Operation aborted, Watchlist clear.')
     }
 })
 client.login(process.env.BOT_TOKEN)
