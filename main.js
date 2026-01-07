@@ -85,10 +85,10 @@ async function sendText(interaction, userIds) {
     let text = ``
     
     if(ingameFriends.length > 0) {
-            text += `▀ Friend(s)  online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    }
+            text += `🎮 Friend(s)  online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    }
     
     if(loggedIn.length > 0) {
-        text += `Friends online, but not playing a game ${loggedIn.join('\n• ')}\n\n`
+        text += `👨🏾‍💻 Friends online, but not playing a game.\n • ${loggedIn.join('\n• ')}\n\n`
 }
 
     await interaction.followUp({
