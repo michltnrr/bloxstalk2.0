@@ -104,7 +104,7 @@ async function sendText(interaction, userIds) {
             content: text,
             embeds: [{
                 title: `Join your friend(s)!`,
-                description: 'Click the link below to join your friend(s)',
+                description: 'Click the link above to join your friend(s)',
                 url: 'https://roblox.com/home',
             }]
         })
