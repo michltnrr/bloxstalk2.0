@@ -3,6 +3,7 @@ const {Client, GatewayIntentBits} = require('discord.js')
 
 let userIds = []
 let userMap = new Map()
+let onlineStatus = new Map()
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds]
@@ -64,45 +65,54 @@ async function getFriends(userIds) {
 
 
 async function sendText(interaction, userIds) {
-    const presenceData = await getPresence(userIds)
-    console.log(JSON.stringify(presenceData, null, 2))
-    let friendsUsers = await getFriends(userIds)
-    console.log(friendsUsers)
-    let ingameFriends = []
-    let loggedIn = []
-    
-    friendsUsers.data.forEach(usr => userMap.set(Number(usr.id), usr.displayName))
-    
-    try {
-        presenceData.userPresences.forEach((el, i) => {
-            const name = userMap.get(el.userId) || `User ${el.userId}`
-            
-            if(el.userPresenceType === 2) ingameFriends.push(name)
-            else if(el.userPresenceType === 1) loggedIn.push(name)
-        })
-    console.log(ingameFriends)
-    console.log(loggedIn)
-    let text = ``
-    
-    if(ingameFriends.length > 0) {
-            text += `🎮 Friend(s)  online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    }
-    
-    if(loggedIn.length > 0) {
-        text += `👨🏾‍💻 Friends online, but not playing a game.\n • ${loggedIn.join('\n• ')}\n\n`
-}
+    const run = setInterval(async () => {
+        const presenceData = await getPresence(userIds)
+        console.log(JSON.stringify(presenceData, null, 2))
+        let friendsUsers = await getFriends(userIds)
+        console.log(friendsUsers)
+        
+        let ingameFriends = []
+        let loggedIn = []
+        
+        friendsUsers.data.forEach(usr => userMap.set(Number(usr.id), usr.displayName))
+        
+        try {
+            presenceData.userPresences.forEach((el, i) => {
+                const name = userMap.get(el.userId) || `User ${el.userId}`
+                let lastStatus = onlineStatus.get(el.userId) || 0
+                currStatus = el.userPresenceType
 
-    await interaction.followUp({
-        content: text,
-        embeds: [{
-            title: `Join your friend(s)!`,
-            description: 'Click the link below to join your friend(s)',
-            url: 'https://roblox.com/home',
-        }]
-    })
+                if(lastStatus === 0 && currStatus === 2) ingameFriends.push(name)
+                else if(lastStatus === 0 && currStatus === 1) loggedIn.push(name)
+
+                onlineStatus.set(el.userId, currStatus)
+
+            })
+        console.log(ingameFriends)
+        console.log(loggedIn)
+        if(ingameFriends.length === 0 && loggedIn.length === 0) return
+        let text = ``
+        
+        if(ingameFriends.length > 0) 
+            text += `🎮 Friend(s)  online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    
+        
+        if(loggedIn.length > 0) 
+            text += `👨🏾‍💻 Friends online, but not playing a game.\n • ${loggedIn.join('\n• ')}\n\n`
+
     
-}catch(err) {
-    console.log(`Error Sending Text: ${err.message}`)
-}
+        await interaction.followUp({
+            content: text,
+            embeds: [{
+                title: `Join your friend(s)!`,
+                description: 'Click the link below to join your friend(s)',
+                url: 'https://roblox.com/home',
+            }]
+        })
+        
+    }catch(err) {
+        console.log(`Error Sending Text: ${err.message}`)
+    }
+}, 60000)
 }
 
 client.on(`interactionCreate`, async(interaction) => {
@@ -114,6 +124,7 @@ client.on(`interactionCreate`, async(interaction) => {
         console.log(userMap)
         await interaction.reply(`User ${userMap.get(userId)}, is no longer being stalked`)
         userMap.delete(userId)
+        onlineStatus.delete(userId)
     }
 
     else if(interaction.commandName === 'peep') {
@@ -129,6 +140,7 @@ client.on(`interactionCreate`, async(interaction) => {
     else if(interaction.commandName === 'abort') {
         userIds = []
         userMap.clear()
+        onlineStatus.clear()
         await interaction.reply('Operation aborted, Watchlist clear.')
     }
 })
