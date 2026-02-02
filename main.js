@@ -1,4 +1,5 @@
 require('dotenv').config()
+require(`./server`)
 const {Client, GatewayIntentBits} = require('discord.js')
 
 let userIds = []
