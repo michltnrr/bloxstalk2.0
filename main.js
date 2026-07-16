@@ -1,6 +1,7 @@
 require('dotenv').config()
-require(`./server`)
-const {Client, GatewayIntentBits} = require('discord.js')
+// require(`./server`)
+const { supabase } = require('./supabase')
+const {Client, GatewayIntentBits, Integration} = require('discord.js')
 
 let userIds = []
 let userMap = new Map()
@@ -27,22 +28,35 @@ client.on('interactionCreate', async(interaction) => {
         if(interaction.commandName === 'stalk') {
             const targetUsername = interaction.options.getString('username')
             console.log(targetUsername)
+            
             const targetuserData = await userNametoID(targetUsername)
             console.log(targetuserData)
-            targetUserid = targetUsername.data[0].id
-    
-            // if(userIds.includes(userId)) {
-            //     await interaction.reply('User is already being stalked')
-            //     return 
-            // }
             
-            // userIds.push(userId)
-            // onlineStatus.set(userId, 0)
-            // lastInteraction = interaction
+            
+            const userDiscordId = interaction.user.id
+            console.log(userDiscordId)
+            
             if(targetuserData.data.length === 0) {
                 await interaction.reply("User doesn't exist, please enter a valid username.")
             }
-            await interaction.reply("User is now being stalked, We'll let you know when they're online.")
+            
+            const targetUserid = targetuserData.data[0].id
+            const targetUserDisplayName = targetuserData.data[0].displayName
+            
+            const {error} = await supabase
+            .from('tracked-users')
+            .insert({
+                discord_user_id: userDiscordId,
+                tracked_user_id: targetUserid,
+                roblox_username: targetUsername              
+            })
+            
+            if(targetUsername !== targetUserDisplayName) 
+                await interaction.reply(`${targetUsername} (${targetUserDisplayName}) is now being stalked, We'll let you know when they're online.`)
+            
+            else 
+                await interaction.reply(`${targetUsername} is now being stalked, We'll let you know when they're online.`)
+            
             await sendText(interaction, userIds)
         }
 
@@ -71,6 +85,7 @@ async function userNametoID(username) {
 
 }
 
+//here userIds is an array, the endpoint expects an array
 async function getPresence(userIds) {
     try {
         const presensceReq = await fetch('https://presence.roblox.com/v1/presence/users', {
