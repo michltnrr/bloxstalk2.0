@@ -23,21 +23,53 @@ client.once(`ready`, () => {
 client.on('interactionCreate', async(interaction) => {
     if(!interaction.isChatInputCommand()) return
     
-    if(interaction.commandName === 'stalk') {
-        const userId = Number(interaction.options.getString('userid'))
-        if(userIds.includes(userId)) {
-            await interaction.reply('User is already being stalked')
-            return 
+    try {
+        if(interaction.commandName === 'stalk') {
+            const targetUsername = interaction.options.getString('username')
+            console.log(targetUsername)
+            const targetuserData = await userNametoID(targetUsername)
+            console.log(targetuserData)
+            targetUserid = targetUsername.data[0].id
+    
+            // if(userIds.includes(userId)) {
+            //     await interaction.reply('User is already being stalked')
+            //     return 
+            // }
+            
+            // userIds.push(userId)
+            // onlineStatus.set(userId, 0)
+            // lastInteraction = interaction
+            if(targetuserData.data.length === 0) {
+                await interaction.reply("User doesn't exist, please enter a valid username.")
+            }
+            await interaction.reply("User is now being stalked, We'll let you know when they're online.")
+            await sendText(interaction, userIds)
         }
-        
-        userIds.push(userId)
-        onlineStatus.set(userId, 0)
-        lastInteraction = interaction
-        
-        await interaction.reply("User is now being stalked, We'll let you know when they're online.")
-        await sendText(interaction, userIds)
+
+    } catch(err) {
+        console.log('Error running stalk command', err)
     }
 })
+
+async function userNametoID(username) {
+    try {
+
+        const userIdsReq = await fetch('https://users.roblox.com/v1/usernames/users', {
+            method: 'POST',
+            headers: {
+                "Content-Type" : 'application/json',
+                "Cookie" : `.ROBLOXSECURITY=${process.env.ROBLOX_COOKIE}`
+            },
+            body: JSON.stringify({
+                usernames: [username] 
+            })
+        })
+        return await userIdsReq.json()
+    } catch(err) {
+        console.log(`Error converting uername to userID: ${err}`)
+    }
+
+}
 
 async function getPresence(userIds) {
     try {
@@ -52,7 +84,7 @@ async function getPresence(userIds) {
             })
         })
         
-        return presensceReq.json()
+        return await presensceReq.json()
     } catch(err) {
         console.log(`Error Getting Presence: ${err.message}`)
     }

@@ -4,11 +4,11 @@ const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 const commands = [
   new SlashCommandBuilder()
     .setName('stalk')
-    .setDescription('Track a Roblox user by ID')
+    .setDescription('Enter username (not dispaly name) of person to track')
     .addStringOption(option =>
       option
-        .setName('userid')
-        .setDescription('Roblox user ID to track')
+        .setName('username')
+        .setDescription('Roblox user to track')
         .setRequired(true)
     )
     .toJSON(),
@@ -18,7 +18,7 @@ const commands = [
     .setDescription('Stop tracking Roblox User')
     .addStringOption(option => 
       option
-        .setName('userid')
+        .setName('username')
         .setDescription('User ID of person to stop tracking')
         .setRequired(true)
     ).toJSON(),
