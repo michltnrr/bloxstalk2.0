@@ -1,23 +1,68 @@
 require('dotenv').config()
 // require(`./server`)
 const { supabase } = require('./supabase')
-const {Client, GatewayIntentBits, Integration} = require('discord.js')
+const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 })
 
+client.cooldowns = new Collection()
+
+const cooldowns = {
+    stalk: 12,
+    unstalk: 10,
+    peep: 5,
+    abort: 10
+}
+
 client.once(`ready`, () => {
     console.log(`Logged in as ${client.user.tag}`)
 
-    // setInterval(() =>{
-    //     checktrackedUsers()
-    // }, 1000)
+    checktrackedUsers()
+
+    setInterval(checktrackedUsers, 60_000)
 })
 
 client.on('interactionCreate', async(interaction) => {
     if(!interaction.isChatInputCommand()) return
+    
+    const { commandName } = interaction
+
+    if (!client.cooldowns.has(commandName)) {
+        client.cooldowns.set(commandName, new Collection())
+    }
+
+    const now = Date.now()
+    const timestamps = client.cooldowns.get(commandName)
+    console.log(commandName);
+    console.log(timestamps);
+    console.log(timestamps.has(interaction.user.id));
+    const cooldownAmount = (cooldowns[commandName] ?? 3) * 1000
+
+    if (timestamps.has(interaction.user.id)) {
+
+        const expirationTime =
+            timestamps.get(interaction.user.id) + cooldownAmount
+
+        if (now < expirationTime) {
+
+            const remaining = Math.ceil((expirationTime - now) / 1000)
+
+            return interaction.reply({
+                content: `⏳ Please wait ${remaining} second(s) before using \`/${commandName}\` again.`,
+                ephemeral: true
+            })
+        }
+    }
+
+    timestamps.set(interaction.user.id, now)
+    console.log(client.cooldowns)
+
+    setTimeout(() => {
+        timestamps.delete(interaction.user.id)
+    }, cooldownAmount)
     
     const userDiscordId = interaction.user.id
     
@@ -47,7 +92,7 @@ client.on('interactionCreate', async(interaction) => {
                 console.log(targetpresenceData)
                 console.log(`target online status number: ${targetPresence}`)
 
-                //duplicate check before insert (see if users is alrdy trckn trgt)c
+                //duplicate check before insert (see if users is alrdy trckn trgt)
                 const {data, error} = await supabase
                 .from('tracked-users')
                 .select()
@@ -207,78 +252,6 @@ async function getPresence(userIds) {
     }
 }
 
-async function getFriends(userIds) {
-    try {
-        const friendNames = await fetch(`https://users.roblox.com/v1/users`, {
-            method: `POST`,
-            headers: {
-                "Content-Type": "application/json",
-                "Cookie" : `.ROBLOXSECURITY=${process.env.ROBLOX_COOKIE}`
-            }, 
-            body: 
-            JSON.stringify({
-                userIds: userIds
-            })
-        })
-        return friendNames.json()
-    }catch(err) {
-        console.log(`Erorr getting friend names: ${err.message}`)
-    }
-} 
-
-
-async function sendText(interaction, userIds) {
-    const presenceData = await getPresence(userIds)
-    console.log(JSON.stringify(presenceData, null, 2))
-    let friendsUsers = await getFriends(userIds)
-    console.log(friendsUsers)
-    
-    let ingameFriends = []
-    let loggedIn = []
-    
-    friendsUsers.data.forEach(usr => userMap.set(Number(usr.id), usr.displayName))
-    
-    try {
-        presenceData.userPresences.forEach((el, i) => {
-            const name = userMap.get(el.userId) || `User ${el.userId}`
-            let lastStatus = onlineStatus.get(el.userId) || 0
-            let currStatus = el.userPresenceType
-
-            if(lastStatus === 0 && currStatus === 2) ingameFriends.push(name)
-            else if(lastStatus === 0 && currStatus === 1) loggedIn.push(name)
-
-            onlineStatus.set(el.userId, currStatus)
-
-        })
-    
-    console.log(ingameFriends)
-    console.log(loggedIn)
-    
-    if(ingameFriends.length === 0 && loggedIn.length === 0) return
-    let text = ``
-    
-    if(ingameFriends.length > 0) 
-        text += `🎮 Friend(s) online and in game!\n •${ingameFriends.join('\n• ')}\n\n`    
-    
-    if(loggedIn.length > 0) 
-        text += `👨🏾‍💻 Friends online, but not playing a game.\n • ${loggedIn.join('\n• ')}\n\n`
-
-
-    await interaction.followUp({
-        content: text,
-        embeds: [{
-            title: `Join your friend(s)!`,
-            description: 'Click the link above to join your friend(s)',
-            url: 'https://roblox.com/home',
-        }]
-    })
-    
-}catch(err) {
-    console.log(`Error Sending Text: ${err.message}`)
-}
-
-}
-
 //polling function, once enery minute, does one check for all tracked users in db
 async function checktrackedUsers() {
     try {
@@ -327,26 +300,25 @@ async function checktrackedUsers() {
 
                 if(newStatus === 1) {
                     userNotifications.online.push(trackedUser.roblox_username)
-                    
-                    const {error} = await supabase
-                    .from('tracked-users')
-                    .update({online_status:1})
-                    .eq('id', trackedUser.id)
                 }
                 
                 else if(newStatus === 2) {
                     userNotifications.ingame.push(trackedUser.roblox_username)
-                    
-                    const {error} = await supabase
-                    .from('tracked-users')
-                    .update({online_status:2})
-                    .eq('id', trackedUser.id)
                 }
-                //db update for presence still needed here
+            }
+            const {error: updateError} = await supabase
+            .from('tracked-users')
+            .update({
+                online_status: newStatus
+            })
+            .eq('id', trackedUser.id)
 
+            if(updateError) {
+                console.log('Error updating users presence', updateError)
             }
         }
-
+        
+        //send one DM per dc user
         for(const [discordId, users] of notifications) {
             let text = ""
 
@@ -375,6 +347,4 @@ async function checktrackedUsers() {
         console.log('Error polling users', err)
     }
 }
-
-checktrackedUsers()
 client.login(process.env.BOT_TOKEN)
