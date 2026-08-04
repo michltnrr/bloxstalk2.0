@@ -69,6 +69,8 @@ client.on('interactionCreate', async(interaction) => {
     try {
         if(interaction.commandName === 'stalk') {
             try {
+                await interaction.deferReply()
+
                 const targetUsername = interaction.options.getString('username')
                 console.log(targetUsername)
                 
@@ -79,7 +81,7 @@ client.on('interactionCreate', async(interaction) => {
                 console.log(userDiscordId)
                 
                 if(targetuserData.data.length === 0) {
-                    return await interaction.reply("User doesn't exist, please enter a valid username.")
+                    return await interaction.editReply("User doesn't exist, please enter a valid username.")
                 }
                 
                 const targetUserid = [targetuserData.data[0].id]
@@ -138,6 +140,9 @@ client.on('interactionCreate', async(interaction) => {
 
         else if(interaction.commandName === 'peep') {
             try {
+
+                await interaction.deferReply()
+
                 const {data, error} = await supabase
                 .from('tracked-users')
                 .select()
@@ -156,6 +161,7 @@ client.on('interactionCreate', async(interaction) => {
                 else {
                     const stalkedUsers = data.map(user => `• ${user.roblox_username}`).join('\n')
                     console.log(stalkedUsers)
+                    console.log('peep reached reply!')
                     await interaction.reply(`Users being stalked by you: \n${stalkedUsers}`)
 
                 }
@@ -173,6 +179,8 @@ client.on('interactionCreate', async(interaction) => {
 
         else if (interaction.commandName === 'abort') {
             try {
+                await interaction.deferReply()
+                
                 const deleteResposne = await supabase
                 .from('tracked-users')
                 .delete()
@@ -186,6 +194,8 @@ client.on('interactionCreate', async(interaction) => {
 
         else if (interaction.commandName === 'unstalk') {
             try {
+                await interaction.deferReply()
+
                 const targetUser = interaction.options.getString('username')
                 const targetData = await userNametoID(targetUser)
                 console.log(targetData)
