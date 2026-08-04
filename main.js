@@ -107,7 +107,7 @@ client.on('interactionCreate', async(interaction) => {
                 console.log(data)
 
                 if(data.length > 0) {
-                    return await interaction.reply(`You're already tracking ${targetUsername}`)
+                    return await interaction.editReply(`You're already tracking ${targetUsername}`)
                 }
 
                 const {error: insertError} = await supabase
@@ -122,15 +122,15 @@ client.on('interactionCreate', async(interaction) => {
 
                 if(insertError) {
                     console.log(insertError)
-                    return await interaction.reply(`Faield to initiate user tracking`)
+                    return await interaction.editReply(`Faield to initiate user tracking`)
                 }
                 
                 
                 if(targetUsername !== targetUserDisplayName) 
-                    await interaction.reply(`${targetUsername} (${targetUserDisplayName}) is now being stalked, We'll let you know when they're online.`)
+                    await interaction.editReply(`${targetUsername} (${targetUserDisplayName}) is now being stalked, We'll let you know when they're online.`)
                 
                 else 
-                    await interaction.reply(`${targetUsername} is now being stalked, We'll let you know when they're online.`)
+                    await interaction.editReply(`${targetUsername} is now being stalked, We'll let you know when they're online.`)
                 
                 // await sendText(interaction, userIds)
             } catch(err) {
@@ -150,26 +150,26 @@ client.on('interactionCreate', async(interaction) => {
 
                 if(error) {
                     console.log(error)
-                    return await interaction.reply("Database error")
+                    return await interaction.editReply("Database error")
                 }
 
                 console.log(data)
                 if(data.length === 0) {
-                    await interaction.reply(`You're not tracking anyone, use the "/stalk" command to start tracking...`)
+                    await interaction.editReply(`You're not tracking anyone, use the "/stalk" command to start tracking...`)
                 }
 
                 else {
                     const stalkedUsers = data.map(user => `• ${user.roblox_username}`).join('\n')
                     console.log(stalkedUsers)
                     console.log('peep reached reply!')
-                    await interaction.reply(`Users being stalked by you: \n${stalkedUsers}`)
+                    await interaction.editReply(`Users being stalked by you: \n${stalkedUsers}`)
 
                 }
             } catch(err) {
                 console.log(`Error running peep command: ${err}`)
 
                 if(!interaction.replied) {
-                    await interaction.reply({
+                    await interaction.editReply({
                         content: 'Something went wrong running peep',
                         ephemeral: true
                     })
@@ -180,13 +180,13 @@ client.on('interactionCreate', async(interaction) => {
         else if (interaction.commandName === 'abort') {
             try {
                 await interaction.deferReply()
-                
+
                 const deleteResposne = await supabase
                 .from('tracked-users')
                 .delete()
                 .in('discord_user_id', [userDiscordId])
 
-                await interaction.reply('Watchlist cleared, no longer stalking any users')
+                await interaction.editReply('Watchlist cleared, no longer stalking any users')
             } catch(err) {
                 console.log(`Error running abort command: ${err}`)
             }
@@ -201,7 +201,7 @@ client.on('interactionCreate', async(interaction) => {
                 console.log(targetData)
                 
                 if(targetData.data.length === 0) {
-                    return interaction.reply('User doesnt exist (spell check the username).')
+                    return interaction.editReply('User doesnt exist (spell check the username).')
                 }
                 const targetId = targetData.data[0].id
                 
@@ -215,14 +215,14 @@ client.on('interactionCreate', async(interaction) => {
 
                 if(error) {
                     console.log(error)
-                    return interaction.reply(`Something went wrong 😑`)
+                    return interaction.editReply(`Something went wrong 😑`)
                 }
 
                 if(data.length === 0) {
-                    return interaction.reply(`You were never even tracking ${targetUser} 💀`)
+                    return interaction.editReply(`You were never even tracking ${targetUser} 💀`)
                 }
 
-                await interaction.reply(`No longer tracking ${targetUser}`)
+                await interaction.editReply(`No longer tracking ${targetUser}`)
 
             } catch(err) {
                 console.log('Error running unstalk command', err)
