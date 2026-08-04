@@ -1,5 +1,5 @@
 require('dotenv').config()
-// require(`./server`)
+require(`./server`)
 const { supabase } = require('./supabase')
 const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
