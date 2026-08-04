@@ -143,6 +143,11 @@ client.on('interactionCreate', async(interaction) => {
                 .select()
                 .eq('discord_user_id',  userDiscordId)
 
+                if(error) {
+                    console.log(error)
+                    return await interaction.reply("Database error")
+                }
+
                 console.log(data)
                 if(data.length === 0) {
                     await interaction.reply(`You're not tracking anyone, use the "/stalk" command to start tracking...`)
@@ -156,6 +161,13 @@ client.on('interactionCreate', async(interaction) => {
                 }
             } catch(err) {
                 console.log(`Error running peep command: ${err}`)
+
+                if(!interaction.replied) {
+                    await interaction.reply({
+                        content: 'Something went wrong running peep',
+                        ephemeral: true
+                    })
+                }
             }
         }
 
@@ -177,11 +189,11 @@ client.on('interactionCreate', async(interaction) => {
                 const targetUser = interaction.options.getString('username')
                 const targetData = await userNametoID(targetUser)
                 console.log(targetData)
-                const targetId = targetData.data[0].id
-
+                
                 if(targetData.data.length === 0) {
                     return interaction.reply('User doesnt exist (spell check the username).')
                 }
+                const targetId = targetData.data[0].id
                 
                 const {data, error} = await supabase
                 .from('tracked-users')
