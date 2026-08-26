@@ -284,7 +284,7 @@ async function checktrackedUsers() {
         .select()
 
         if(error) {
-            console.log('Error readind db', error)
+            console.log('Error reading db', error)
             return 
         }
 
@@ -293,6 +293,7 @@ async function checktrackedUsers() {
         console.log(trackedusersIds)
         
         const uniqueusersIds = [...new Set(trackedusersIds)]
+
         const allpresenceCheck = await getPresence(uniqueusersIds)
         console.log(allpresenceCheck)
 
@@ -306,6 +307,13 @@ async function checktrackedUsers() {
             const oldStatus = trackedUser.online_status
             const newStatus = presenceMap.get(trackedUser.tracked_user_id)
 
+            console.log(`${trackedUser.roblox_username}: DB= ${oldStatus}, Roblox=${newStatus}`)
+
+            if(newStatus === undefined) {
+                console.log(`No presence data for ${trackedUser.roblox_username}`)
+                continue
+            }
+            // no status change
             if(oldStatus === newStatus) {
                 continue
             }
@@ -349,7 +357,7 @@ async function checktrackedUsers() {
             }
 
             if(users.online.length > 0) {
-                text += `👨🏾‍💻 Friends online, but not playing a game.\n • ${users.online.join('\n• ')}\n\n`
+                text += `👨🏾‍💻 Friend(s) online who just logged on.\n •${users.online.join('\n• ')}\n\n`
 
             }
 
