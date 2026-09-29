@@ -125,6 +125,28 @@ client.on('interactionCreate', async(interaction) => {
                     return await interaction.editReply(`Faield to initiate user tracking`)
                 }
                 
+                if (targetPresence === 1 || targetPresence === 2) {
+                const discordUser = await client.users.fetch(userDiscordId)
+
+                let text
+
+                if (targetPresence === 2) {
+                    text = `🎮 ${targetUsername} is currently online and in game!`
+                } else {
+                    text = `👨🏾‍💻 ${targetUsername} is currently online!`
+                }
+
+                await discordUser.send({
+                    content: text,
+                    embeds: [
+                        {
+                            title: "Join your friend!",
+                            description: 'Click the link above to join your friend',
+                            url: 'https://roblox.com/home',
+                        }
+                    ]
+                })
+            }
                 
                 if(targetUsername !== targetUserDisplayName) 
                     await interaction.editReply(`${targetUsername} (${targetUserDisplayName}) is now being stalked, We'll let you know when they're online.`)
