@@ -1,5 +1,7 @@
 require('dotenv').config()
 require(`./server`)
+console.log('MAIN.JS STARTED')
+
 const { supabase } = require('./supabase')
 const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
@@ -413,6 +415,7 @@ async function checktrackedUsers() {
 }
 
 console.log('BOT_TOKEN exists:', Boolean(process.env.BOT_TOKEN))
+console.log('Attempting Discord login...')
 
 client.login(process.env.BOT_TOKEN)
     .then(() => console.log('Discord login successful'))
