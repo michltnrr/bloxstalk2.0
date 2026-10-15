@@ -437,6 +437,7 @@ async function checktrackedUsers() {
 }
 
 
+
 console.log('BOT_TOKEN exists:', Boolean(process.env.BOT_TOKEN))
 console.log('Attempting Discord login...')
 
@@ -448,16 +449,36 @@ client.on('warn', (message) => {
     console.warn('[Discord warning]', message)
 })
 
+client.on('shardError', (err, shardId) => {
+    console.error(`[Discord shard ${shardId}] Error:`, err)
+})
+
+client.on('shardReady', (shardId) => {
+    console.log(`[Discord shard ${shardId}] READY`)
+})
+
+client.on('shardDisconnect', (event, shardId) => {
+    console.log(`[Discord shard ${shardId}] DISCONNECTED:`, event.code, event.reason)
+})
+
+client.on('shardReconnecting', (shardId) => {
+    console.log(`[Discord shard ${shardId}] RECONNECTING`)
+})
+
+client.on('invalidated', () => {
+    console.error('[Discord] Session invalidated')
+})
+
 const loginTimeout = setTimeout(() => {
-    console.error('Discord login is still pending after 20 seconds')
-}, 20_000)
+    console.error('[Discord] Login still pending after 30 seconds')
+}, 30_000)
 
 client.login(process.env.BOT_TOKEN)
     .then(() => {
         clearTimeout(loginTimeout)
-        console.log('Discord login promise resolved')
+        console.log('[Discord] Login promise resolved')
     })
     .catch(err => {
         clearTimeout(loginTimeout)
-        console.error('Discord login failed:', err)
+        console.error('[Discord] Login failed:', err)
     })
