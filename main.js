@@ -2,6 +2,28 @@ require('dotenv').config()
 require(`./server`)
 console.log('MAIN.JS STARTED')
 
+const WebSocket = require('ws')
+
+const testSocket = new WebSocket('wss://gateway.discord.gg/?v=10&encoding=json')
+
+testSocket.on('open', () => {
+    console.log('[NETWORK TEST] WebSocket connected')
+})
+
+testSocket.on('message', data => {
+    console.log('[NETWORK TEST] Gateway responded:', data.toString())
+    testSocket.close()
+})
+
+testSocket.on('error', err => {
+    console.error('[NETWORK TEST] WebSocket error:', err.message)
+})
+
+setTimeout(() => {
+    console.log('[NETWORK TEST] Test timed out')
+    testSocket.terminate()
+}, 10000)
+
 const { supabase } = require('./supabase')
 const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
