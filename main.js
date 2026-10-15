@@ -10,6 +10,18 @@ const client = new Client({
 
 client.cooldowns = new Collection()
 
+client.on('error', (err) => {
+  console.error('Discord client error:', err)
+})
+
+client.on('shardDisconnect', (event, shardId) => {
+  console.log(`Discord shard ${shardId} disconnected:`, event.code)
+})
+
+client.on('shardReconnecting', (shardId) => {
+  console.log(`Discord shard ${shardId} reconnecting`)
+})
+
 const cooldowns = {
     stalk: 12,
     unstalk: 10,
@@ -310,14 +322,14 @@ async function checktrackedUsers() {
             return 
         }
 
-        console.log(data) //data is an array of objects w the prop 'tracked_user_id'
+        // console.log(data) //data is an array of objects w the prop 'tracked_user_id'
         const trackedusersIds = data.map((el) => el.tracked_user_id)
-        console.log(trackedusersIds)
+        // console.log(trackedusersIds)
         
         const uniqueusersIds = [...new Set(trackedusersIds)]
 
         const allpresenceCheck = await getPresence(uniqueusersIds)
-        console.log(allpresenceCheck)
+        // console.log(allpresenceCheck)
 
         const presenceMap = new Map()
 
@@ -329,7 +341,7 @@ async function checktrackedUsers() {
             const oldStatus = trackedUser.online_status
             const newStatus = presenceMap.get(trackedUser.tracked_user_id)
 
-            console.log(`${trackedUser.roblox_username}: DB= ${oldStatus}, Roblox=${newStatus}`)
+            // console.log(`${trackedUser.roblox_username}: DB= ${oldStatus}, Roblox=${newStatus}`)
 
             if(newStatus === undefined) {
                 console.log(`No presence data for ${trackedUser.roblox_username}`)
