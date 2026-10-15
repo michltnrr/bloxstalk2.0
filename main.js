@@ -411,4 +411,6 @@ async function checktrackedUsers() {
         console.log('Error polling users', err)
     }
 }
-client.login(process.env.BOT_TOKEN)
+client.login(process.env.BOT_TOKEN).catch(err => {
+    console.error('Discord login failed:', err)
+})
