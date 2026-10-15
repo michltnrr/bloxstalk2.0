@@ -414,6 +414,7 @@ async function checktrackedUsers() {
     }
 }
 
+
 console.log('BOT_TOKEN exists:', Boolean(process.env.BOT_TOKEN))
 console.log('Attempting Discord login...')
 
@@ -425,6 +426,16 @@ client.on('warn', (message) => {
     console.warn('[Discord warning]', message)
 })
 
+const loginTimeout = setTimeout(() => {
+    console.error('Discord login is still pending after 20 seconds')
+}, 20_000)
+
 client.login(process.env.BOT_TOKEN)
-    .then(() => console.log('Discord login promise resolved'))
-    .catch(err => console.error('Discord login failed:', err))
+    .then(() => {
+        clearTimeout(loginTimeout)
+        console.log('Discord login promise resolved')
+    })
+    .catch(err => {
+        clearTimeout(loginTimeout)
+        console.error('Discord login failed:', err)
+    })
