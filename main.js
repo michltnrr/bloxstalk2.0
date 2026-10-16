@@ -417,7 +417,6 @@ async function checktrackedUsers() {
 
             if(users.online.length > 0) {
                 text += `👨🏾‍💻 Friend(s) online who just logged on.\n •${users.online.join('\n• ')}\n\n`
-
             }
 
             const discordUser = await client.users.fetch(discordId)
@@ -434,6 +433,18 @@ async function checktrackedUsers() {
         }
     } catch(err) {
         console.log('Error polling users', err)
+        if(err.code === 50278) {
+            //user no is no longer in server, stop tracking them
+            const {error: delError} = await supabase
+            .from('tracked-users')
+            .delete()
+            .eq('discord_user_id', discordId)
+
+            if(delError) console.error('Failed to remove user', discordId, delError)
+            else console.log(`Removed ${discordId} from tracked-users (no longer apart of server)`)
+        } else {
+            console.error(`DM to ${discordId} failed:`, err.code, err.message)
+        }
     }
 }
 
