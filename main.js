@@ -2,15 +2,15 @@ require('dotenv').config()
 require(`./server`)
 console.log('MAIN.JS STARTED')
 
-// fetch('https://discord.com/api/v10/gateway/bot', {
-//     headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` }
-// })
-// .then(async res => {
-//     console.log('[REST TEST] status:', res.status)
-//     console.log('[REST TEST] retry-after:', res.headers.get('retry-after'))
-//     console.log('[REST TEST] body:', (await res.text()).slice(0, 300))
-// })
-// .catch(err => console.error('[REST TEST] failed:', err))
+fetch('https://discord.com/api/v10/gateway/bot', {
+    headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` }
+})
+.then(async res => {
+    console.log('[REST TEST] status:', res.status)
+    console.log('[REST TEST] retry-after:', res.headers.get('retry-after'))
+    console.log('[REST TEST] body:', (await res.text()).slice(0, 300))
+})
+.catch(err => console.error('[REST TEST] failed:', err))
 
                 
 const { supabase } = require('./supabase')
@@ -18,9 +18,11 @@ const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [GatewayIntentBits.Guilds],
+    rest: { rejectOnRateLimit: () => true }
 })
-// client.rest.on('rateLimited', info => console.log('[REST rate limited]', info))
+client.rest.on('rateLimited', info => console.log('[REST rate limited]', info))
+client.rest.on('response', (req, res) => console.log('[REST]', req.method, req.path, res.status))
 
 client.cooldowns = new Collection()
 
@@ -218,7 +220,7 @@ client.on('interactionCreate', async(interaction) => {
 
                 }
             } catch(err) {
-                console.log(`Error running peep command: ${err}`)
+                console.error(`Error running peep command:`, err)
 
                 if(!interaction.replied) {
                     try {
