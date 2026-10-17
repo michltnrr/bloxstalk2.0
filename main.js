@@ -2,15 +2,19 @@ require('dotenv').config()
 require(`./server`)
 console.log('MAIN.JS STARTED')
 
-fetch('https://discord.com/api/v10/gateway/bot', {
-    headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` }
-})
-.then(async res => {
-    console.log('[REST TEST] status:', res.status)
-    console.log('[REST TEST] retry-after:', res.headers.get('retry-after'))
-    console.log('[REST TEST] body:', (await res.text()).slice(0, 300))
-})
-.catch(err => console.error('[REST TEST] failed:', err))
+// fetch('https://discord.com/api/v10/gateway/bot', {
+//     headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` }
+// })
+// .then(async res => {
+//     console.log('[REST TEST] status:', res.status)
+//     console.log('[REST TEST] retry-after:', res.headers.get('retry-after'))
+//     console.log('[REST TEST] body:', (await res.text()).slice(0, 300))
+// })
+// .catch(err => console.error('[REST TEST] failed:', err))
+
+// safety net: a stray error should never take the whole bot down
+process.on('unhandledRejection', err => console.error('Unhandled rejection:', err))
+process.on('uncaughtException', err => console.error('Uncaught exception:', err))
 
                 
 const { supabase } = require('./supabase')
@@ -19,9 +23,16 @@ const {Client, GatewayIntentBits, Collection} = require('discord.js')
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
-    rest: { rejectOnRateLimit: () => true }
 })
-client.rest.on('rateLimited', info => console.log('[REST rate limited]', info))
+
+client.rest.on('rateLimited', info => console.log('[REST rate limited]', {
+    route: info.route,
+    method: info.method,
+    global: info.global,
+    scope: info.scope,
+    retryAfter: info.retryAfter
+}))
+
 client.rest.on('response', (req, res) => console.log('[REST]', req.method, req.path, res.status))
 
 client.cooldowns = new Collection()
@@ -130,7 +141,8 @@ client.on('interactionCreate', async(interaction) => {
                 .eq('tracked_user_id', Number(targetUserid))
                 
                 if(error) {
-                    console.log(`Error checking for duplicate stalk inset`, error)
+                    console.log(`Error checking for duplicate stalk insert`, error)
+                    return await interaction.editReply('Database error, try again later')
                 }
                 console.log(data)
 
@@ -150,9 +162,10 @@ client.on('interactionCreate', async(interaction) => {
 
                 if(insertError) {
                     console.log(insertError)
-                    return await interaction.editReply(`Faield to initiate user tracking`)
+                    return await interaction.editReply(`Failed to initiate user tracking`)
                 }
                 
+
                 if (targetPresence === 1 || targetPresence === 2) {
                 const discordUser = await client.users.fetch(userDiscordId)
 
@@ -164,17 +177,23 @@ client.on('interactionCreate', async(interaction) => {
                     text = `👨🏾‍💻 ${targetUsername} is currently online!`
                 }
 
-                await discordUser.send({
-                    content: text,
-                    embeds: [
-                        {
-                            title: "Join your friend!",
-                            description: 'Click the link above to join your friend',
-                            url: 'https://roblox.com/home',
-                        }
-                    ]
-                })
-            }
+                try {
+                    await discordUser.send({
+                        content: text,
+                        embeds: [
+                            {
+                                title: "Join your friend!",
+                                description: 'Click the link above to join your friend',
+                                url: 'https://roblox.com/home',
+                            }
+                        ]
+                    })
+
+                } catch(dmErr) {
+                    console.log(`Stalk DM to ${userDiscordId} failed:`, dmErr.code, dmErr.message)
+                }
+
+                }
                 
                 if(targetUsername !== targetUserDisplayName) 
                     await interaction.editReply(`${targetUsername} (${targetUserDisplayName}) is now being stalked, We'll let you know when they're online.`)
@@ -185,6 +204,12 @@ client.on('interactionCreate', async(interaction) => {
                 // await sendText(interaction, userIds)
             } catch(err) {
                 console.log(`Error running stalk command: ${err}`)
+
+                try {
+                    await interaction.editReply('Something went wrong, try again later')
+                }catch(replyErr) {
+                    console.log('Failed to send stalk error reply:', replyErr)
+                }
             }
         } 
 
@@ -240,14 +265,25 @@ client.on('interactionCreate', async(interaction) => {
             try {
                 await interaction.deferReply()
 
-                const deleteResposne = await supabase
+                const {error: deleteError} = await supabase
                 .from('tracked-users')
                 .delete()
                 .in('discord_user_id', [userDiscordId])
 
+                if(deleteError) {
+                console.error('Error clearing watchlist:', deleteError)
+                return await interaction.editReply('Failed to clear watchlist, try again later')
+                }
+
                 await interaction.editReply('Watchlist cleared, no longer stalking any users')
             } catch(err) {
                 console.log(`Error running abort command: ${err}`)
+
+                try {
+                    await interaction.editReply('Something went wrong, try again later')
+                } catch(replyErr) {
+                    console.error('Failed to send error reply:', replyErr)
+                }
             }
         }
 
@@ -285,6 +321,12 @@ client.on('interactionCreate', async(interaction) => {
 
             } catch(err) {
                 console.log('Error running unstalk command', err)
+
+                try {
+                    await interaction.editReply('Something went wrong, try again later')
+                }catch(replyErr) {
+                    console.error('Failed to send error reply:', replyErr)
+                }
             }
         }
     } catch(err) {
@@ -334,7 +376,10 @@ async function getPresence(userIds) {
 }
 
 //polling function, once enery minute, does one check for all tracked users in db
+let isChecking = false
 async function checktrackedUsers() {
+    if(isChecking) return
+    isChecking = true
     try {
         const notifications = new Map()
         
@@ -342,10 +387,12 @@ async function checktrackedUsers() {
         .from('tracked-users')    
         .select()
 
+        
         if(error) {
             console.log('Error reading db', error)
             return 
         }
+        if(!data || data.length === 0) return
 
         // console.log(data) //data is an array of objects w the prop 'tracked_user_id'
         const trackedusersIds = data.map((el) => el.tracked_user_id)
@@ -355,6 +402,11 @@ async function checktrackedUsers() {
 
         const allpresenceCheck = await getPresence(uniqueusersIds)
         // console.log(allpresenceCheck)
+
+        if(!allpresenceCheck?.userPresences) { //roblox sent an error back 
+            console.log('Bad presence response:', allpresenceCheck)
+            return 
+        }
 
         const presenceMap = new Map()
 
@@ -419,36 +471,46 @@ async function checktrackedUsers() {
                 text += `👨🏾‍💻 Friend(s) online who just logged on.\n •${users.online.join('\n• ')}\n\n`
             }
 
-            const discordUser = await client.users.fetch(discordId)
-            await discordUser.send({
-                content: text,
-                embeds: [
-                    {
-                        title: "Join your friend(s)!",
-                        description: 'Click the link above to join your friend(s)',
-                        url: 'https://roblox.com/home',
-                    }
-                ]
-            })
-        }
-    } catch(err) {
-        console.log('Error polling users', err)
-        if(err.code === 50278) {
-            //user no is no longer in server, stop tracking them
-            const {error: delError} = await supabase
-            .from('tracked-users')
-            .delete()
-            .eq('discord_user_id', discordId)
+            // one failed DM (closed DMs, etc.) must not block everyone else's notifications.
+            // we just log and move on; the user's watchlist is left untouched.
 
-            if(delError) console.error('Failed to remove user', discordId, delError)
-            else console.log(`Removed ${discordId} from tracked-users (no longer apart of server)`)
-        } else {
-            console.error(`DM to ${discordId} failed:`, err.code, err.message)
+            try {
+                const discordUser = await client.users.fetch(discordId)
+                    
+                await discordUser.send({
+                        content: text,
+                        embeds: [
+                            {
+                                title: "Join your friend(s)!",
+                                description: 'Click the link above to join your friend(s)',
+                                url: 'https://roblox.com/home',
+                            }
+                        ]
+                    })
+
+            }catch(dmErr) {
+                if(dmErr.code === 50278) {
+                    //remove users no longer in the server
+                    const {error: delError} = await supabase
+                    .from('tracked-users')
+                    .delete()
+                    .eq('discord_user_id', discordId)
+        
+                    if(delError) console.error('Failed to remove user', discordId, delError)
+                    else console.log(`Removed ${discordId} from tracked-users (no longer apart of server)`)
+                } else {
+                    //DMs off or anything else: log it
+                    console.error(`DM to ${discordId} failed:`, dmErr.code, dmErr.message)
+                }
+            }
+            }
+
+        } catch(err) {
+            console.log('Error polling users', err)
+        } finally {
+            isChecking = false
         }
     }
-}
-
-
 
 console.log('BOT_TOKEN exists:', Boolean(process.env.BOT_TOKEN))
 console.log('Attempting Discord login...')
@@ -477,16 +539,23 @@ client.on('invalidated', () => {
     console.error('[Discord] Session invalidated')
 })
 
-const loginTimeout = setTimeout(() => {
-    console.error('[Discord] Login still pending after 30 seconds')
-}, 30_000)
-
-client.login(process.env.BOT_TOKEN)
-    .then(() => {
-        clearTimeout(loginTimeout)
+// retry login with backoff so a temporary block doesn't leave the bot dead
+// (the express server keeps the process alive, so nothing else would retry)
+let loginAttempts = 0
+ 
+async function login() {
+    try {
+        await client.login(process.env.BOT_TOKEN)
+        loginAttempts = 0
         console.log('[Discord] Login promise resolved')
-    })
-    .catch(err => {
-        clearTimeout(loginTimeout)
-        console.error('[Discord] Login failed:', err)
-    })
+    } catch(err) {
+        loginAttempts++
+        // retryAfter is in ms when discord.js gives us one; otherwise back off 5 min, doubling up to 1 hour
+        const fallback = Math.min(5 * 60_000 * 2 ** (loginAttempts - 1), 60 * 60_000)
+        const wait = (err.retryAfter ?? fallback) + 5_000
+        console.error(`[Discord] Login failed (attempt ${loginAttempts}), retrying in ${Math.round(wait / 60000)} min:`, err.message)
+        setTimeout(login, wait)
+    }
+}
+ 
+login()
