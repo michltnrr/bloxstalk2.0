@@ -400,8 +400,6 @@ async function checktrackedUsers() {
         
         const uniqueusersIds = [...new Set(trackedusersIds)]
 
-        const allpresenceCheck = await getPresence(uniqueusersIds)
-        // console.log(allpresenceCheck)
 
         const presenceMap = new Map()
         for(let i = 0; i < uniqueusersIds.length; i += 50) {
@@ -419,10 +417,6 @@ async function checktrackedUsers() {
             })
         }
 
-
-        allpresenceCheck.userPresences.forEach((user) => {
-            presenceMap.set(user.userId, user.userPresenceType)
-        })
 
         for(const trackedUser of data) {
             const oldStatus = trackedUser.online_status
