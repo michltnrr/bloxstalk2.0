@@ -403,12 +403,22 @@ async function checktrackedUsers() {
         const allpresenceCheck = await getPresence(uniqueusersIds)
         // console.log(allpresenceCheck)
 
-        if(!allpresenceCheck?.userPresences) { //roblox sent an error back 
-            console.log('Bad presence response:', allpresenceCheck)
-            return 
+        const presenceMap = new Map()
+        for(let i = 0; i < uniqueusersIds.length; i += 50) {
+            const batch = uniqueusersIds.slice(i, i + 50)
+
+            const presenceData = await getPresence(batch)
+
+            if(!presenceData?.userPresences) {
+                console.log('Bad presence response:', presenceData)
+                continue
+            }
+
+            presenceData.userPresences.forEach((user) => { //roblox sent an error back
+                presenceMap.set(user.userId, user.userPresenceType)
+            })
         }
 
-        const presenceMap = new Map()
 
         allpresenceCheck.userPresences.forEach((user) => {
             presenceMap.set(user.userId, user.userPresenceType)
